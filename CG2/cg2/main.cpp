@@ -53,13 +53,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	ShowWindow(hwnd, SW_SHOW);
 	
-	//OutputDebugStringA("hello,DirectX!!\n");
 
 
 	MSG msg{};
 
 	//DirectX初期化処理部分↓
+#ifdef _DEBUG
+	ID3D12Debug1* debugController;
+	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
+		debugController->EnableDebugLayer();
+		debugController->SetEnableGPUBasedValidation(TRUE);//重たくなったらここをコメントアウト
+	}
+#endif
+
 	
+
+
 	HRESULT result;
 	ID3D12Device* device = nullptr;
 	IDXGIFactory7* dxgiFactory = nullptr;
@@ -71,14 +80,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	result = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory));
 	assert(SUCCEEDED(result));
+
+
 	std::vector<IDXGIAdapter4*>adapters;
 
 	IDXGIAdapter4* tmpAdapter = nullptr;
 
-	for (UINT i = 0; dxgiFactory->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
+	for (UINT i = 0; dxgiFactory->EnumAdapterByGpuPreference(i,
+		DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
 		IID_PPV_ARGS(&tmpAdapter)) != DXGI_ERROR_NOT_FOUND; i++) {
 		adapters.push_back(tmpAdapter);
 	}
+
 	
 	for (size_t i = 0; i < adapters.size(); i++) {
 		DXGI_ADAPTER_DESC3 adapterDesc;
@@ -153,11 +166,46 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	std::vector<ID3D12Resource*>backBuffers;
 	backBuffers.resize(swapChainDesc.BufferCount);
 
+	for (size_t i = 0; i < backBuffers.size(); i++) {
+		swapChain->GetBuffer((UINT)i, IID_PPV_ARGS(&backBuffers[i]));
+		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvHeap->GetCPUDescriptorHandleForHeapStart();
+		rtvHandle.ptr += i * device->GetDescriptorHandleIncrementSize(rtvHeapDesc.Type);
+		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
+		rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+
+		device->CreateRenderTargetView(backBuffers[i], &rtvDesc, rtvHandle);
 
 
+		ID3D12Fence* fence = nullptr;
+		UINT64 fenceVal = 0;
 
+		result = device->CreateFence(fenceVal, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
 
+	}
+#ifdef _DEBUG
 
+	ID3D12InfoQueue* infoQueue;
+	if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&infoQueue)))) {
+		infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
+		infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
+		infoQueue->Release();
+
+	}
+#endif
+
+	D3D12_MESSAGE_ID denyIds[] = {
+		D3D12_MESSAGE_ID_RESOURCE_BARRIER_MISMATCHING_COMMAND_LIST_TYPE
+	};
+	D3D12_MESSAGE_SEVERITY severities[] = {
+		D3D12_MESSAGE_SEVERITY_INFO
+	};
+	D3D12_INFO_QUEUE_FILTER  filter{};
+	filter.DenyList.NumIDs = _countof(denyIds);
+	filter.DenyList.pIDList = denyIds;
+	filter.DenyList.NumSeverities = _countof(severities);
+	filter.DenyList.pSeverityList = severities;
+	infoQueue->PushStorageFilter(&filter);
 
 
 
