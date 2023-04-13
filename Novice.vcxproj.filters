@@ -64,7 +64,7 @@
     <ClCompile Include="C:\KamataEngine\DirectXGame\3d\Mesh.cpp">
       <Filter>KamataEngine\Source</Filter>
     </ClCompile>
-    <ClCompile Include="tendaygame1.cpp">
+    <ClCompile Include="mainB-2.cpp">
       <Filter>KamataEngine</Filter>
     </ClCompile>
   </ItemGroup>

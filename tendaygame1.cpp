@@ -126,6 +126,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	int sepalatey3 = 590;
 	int sepalatex4 = 0;
 	int sepalatey4 = 0;
+	int sepalatey5 = 0;
 
 	// キー入力結果を受け取る箱
 	char keys[256] = {0};
